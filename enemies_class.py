@@ -3,27 +3,29 @@ import random
 
 class enemy:
 
-    def __init__(self, x, y, w, h, hp, img, spawn_map):
+    def __init__(self, x, y, w, h, hp, img, destination):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         self.hp = hp
         self.img = img 
+        self.dest = destination
         self.rect = pygame.FRect(x, y, w, h)
-        
-    def spawn(self, spawn_map):
-        done = False
-        y = 0
-        for row in spawn_map:
-              x = 0
-              for num in row:  
-                 if num == '1':
-                    self.rect = pygame.FRect(x * self.w, y * self.h, self.w, self.h) 
-                    print(self.rect)
-                    self.destination = 16 * x + (500 - (16 * 4))
-                    break
-                 x += 1
-              y += 1
+
+    def move(self, vel):
+        if self.rect.x >= self.dest:  
+           self.rect.x -= vel     
+
+    def damage(self, bullets, damage):
+      for bullet in bullets: 
+       if self.rect.colliderect(bullet):
+          self.hp -= damage 
+          bullets.remove(bullet)      
+
+    def remove(self):
+        if self.hp <= 0:
+           return True, 100
+        else: return False, 0    
               
         
