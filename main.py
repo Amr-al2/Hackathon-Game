@@ -4,7 +4,8 @@ import random
 import os
 import time
 from player_class import player
-from obstacles import obstacle
+from obstacles_class import obstacle
+from enemies_class import enemy
 pygame.init()
 
 #Set Up Screen
@@ -23,6 +24,7 @@ last_time = time.time()
 start = False
 current_time = pygame.time.get_ticks()
 start_time = pygame.time.get_ticks()
+timer_text = str("0.0s")
 
 ##Shoot
 shoot_cd = 1
@@ -33,7 +35,7 @@ up = False
 down = False
 left = False
 right = False
-vel = 150
+vel = 0
 
 dirc = ["right"]
 dash = False
@@ -52,6 +54,21 @@ def loadify(imgname):
     return pygame.image.load(os.path.join(imgname)).convert_alpha()
 
 ss_img = loadify("space_ship.png")
+heart_img = loadify("Heart.png")
+
+#Map Render
+def load_map(path):
+    f = open(path + '.txt','r')
+    data = f.read()
+    f.close()
+    data = data.split('\n')
+    game_map = []
+    for row in data:
+        game_map.append(list(row))
+    return game_map
+
+spawn_map = load_map("Map/spawn_map")
+
 
 #Pixel Font
 def clip(surf,x,y,x_size,y_size):
@@ -99,45 +116,79 @@ def make_bullet(rect):
 #Rects
 
 ##Astroids
-astroids_max = 8
 astroid_cd = pygame.time.get_ticks()
+sAstroid_cd = pygame.time.get_ticks()
 astroidRect = pygame.FRect(W // 2 + 10, 0, 25, 25)
+sAstroidRect = pygame.FRect(0, 0, 15, 15)
 astroids = []
+sAstroids = []
+topAstroids = []
+bottomAstroids = []
+sAstroids.append(topAstroids)
+sAstroids.append(bottomAstroids)
+
+astroid_imgs = []
+for i in range(1,6):
+   astroid_imgs.append(loadify("big_astroids/big_astroid" + str(i) + ".png"))
+sAstroid_imgs = []
+for i in range(1,6):
+   sAstroid_imgs.append(loadify("small_astroids/small_astroid" + str(i) + ".png"))
 
 ##Borders
 tiles = [pygame.Rect(0, 0 - 50, W // 2, 50), pygame.Rect(0 - 50, 0, 50, H // 2), pygame.Rect(0, H // 2, W // 2, 50), pygame.Rect(W // 2, 0, 50, H // 2)]
 
 ##BG
+bg_imgs = []
+bg_imgs.append(loadify("bg_1.png"))
+bg_imgs.append(loadify("bg_2.png"))
+bg_imgs.append(loadify("bg_1.png"))
 bgs = [pygame.FRect(0, 0, W // 2, H // 2), pygame.FRect(W // 2, 0, W // 2, H // 2), pygame.FRect(W, 0, W // 2, H // 2)]
 
 bg_blocker = pygame.Rect(-W // 2 - 100 // 2, 0, 100 // 2, H // 2)
 
 #Player
-p = player(W // 4, H // 4, 20, 16)
+p = player(W // 4, H // 4, 32, 20)
+hearts = 5
+total_score = 0
+wave = 0
+start_wave = False
 
-#Collision Detection
+#Enemies
+enemy_cd = pygame.time.get_ticks()
+enemy_img = loadify("enemy_ship.png")
+enemies = []
 
 #Game Loop
 clock = pygame.time.Clock()
 run = True
 while run:
 
-    #Time Tracker
-    if start == True:
-      current_time = pygame.time.get_ticks()
     #Delta Time
     dt = clock.tick(FPS) / 1000
     last_time = time.time()
 
-    display.fill(black)
+    display.fill(black) 
+    
     num = 0
     for bg in bgs:
-      break
       if bg.colliderect(bg_blocker):
-       bg.x = W
-      pygame.draw.rect(display, colors[num], bg)
-      bg.x -= 200 * dt
-      num += 1
+       bg.x = W 
+      display.blit(bg_imgs[num], (bg.x, 0))
+      if start == True: 
+       bg.x -= 140 * dt
+       num += 1
+    display.fill(black)   
+
+    #Time Tracker
+    if start == True:
+      current_time = pygame.time.get_ticks()
+      timer_text = list(str(current_time - start_time))
+      timer_text.insert(-3, '.')
+      timer_text.append('s')   
+    my_big_font.render(display,timer_text,(5,10))
+
+    #Score
+    my_big_font.render(display,str(total_score),(5, H // 2 - 15))
 
     movement = [0,0]
 
@@ -150,7 +201,7 @@ while run:
     if left:
        movement[0] -= vel * dt 
 
-    if dash_count + 1 >= 5:
+    if dash_count + 1 >= 4:
       dash = False
       dash_count = 0
 
@@ -230,7 +281,7 @@ while run:
                  dirc.append("rightUp")
 
            if event.key == pygame.K_o and dash_allow and dash == False:
-              if last_time - dash_cd >= 3:
+              if last_time - dash_cd >= 2:
                  dash = True  
                  dash_cd = time.time()
 
@@ -241,8 +292,16 @@ while run:
 
            if event.key == pygame.K_SPACE and start == False:
               start = True
+              vel = 150
+              total_score = 0
+              p.rect.x , p.rect.y = W // 4, H // 4
               start_time = pygame.time.get_ticks()
+              enemy_cd = time.time()
+              wave = 1
+              start_wave = True
+              hearts = 5
               astroid_cd = .01
+              sAstroid_cd = .01
 
         if event.type == pygame.KEYUP:
            if event.key == pygame.K_w:
@@ -258,35 +317,108 @@ while run:
        start_text = 'Press Space to Start'
        my_big_font.render(display,start_text,(W // 4 - 140 // 2, 10))
 
-    if start == True and last_time - astroid_cd >= 1 and len(astroids) < astroids_max:
-      if random.randint(0,60) == 1: 
+    if start == True and last_time - astroid_cd >= 1:
+      if random.randint(0,30) == 1: 
        if random.randint(0,60) >= 30:
           y =  random.randint(0,8) * 20
        else:   
           y = random.randint(6,13) * 20
        astroid_cd = time.time()
-       astroids.append(obstacle(W // 2 + 10, y, 100))
+       i = random.randint(0,4)
+       astroids.append(obstacle(W // 2 + 10, y, 27, 27, 100, astroid_imgs[i]))
+
+    if start == True and last_time - sAstroid_cd >= 1.2:  
+       if random.randint(0,30) == 1:
+         x = random.randint(0,16) * 15 
+         i = random.randint(0,4)
+         if random.randint(0,60) >= 30:
+            y = - 20
+            sAstroids[0].append(obstacle(x, y, 15, 15, 50, sAstroid_imgs[i])) 
+         else:
+            y = H // 2 + 20
+            sAstroids[1].append(obstacle(x, y, 15, 15, 50, sAstroid_imgs[i])) 
+         sAstroid_cd = time.time() 
+
+    if last_time - enemy_cd >= 3 and start_wave == True:
+       for i in range(0, wave + 1):
+          x = random.randint(0,16)
+          y = random.randint(0,3)
+          if spawn_map[x][y] == '1':
+             while spawn_map[x][y] == '1':
+                x = random.randint(0,16)
+                y = random.randint(0,3) 
+                spawn_map[x][y] == '1'
+          spawn_map[x][y] = '1'   
+          print(x,y)
+          e = enemy(y * 32 + 10, x * 20 + 10, 32, 20, 100, enemy_img, spawn_map)
+          enemies.append(e)
+          print(e.rect)
+       start_wave = False  
+
+    if len(enemies) >= 0:
+     for e in enemies:
+       display.blit(e.img, (e.rect.x, e.rect.y))
+
+    for astroid in sAstroids[0]:
+       astroid.damage(bullets, 50)
+       remove, points = astroid.remove()
+       total_score += points
+       if remove:
+          sAstroids[0].remove(astroid)
+       elif astroid.rect.colliderect(p.rect):
+          hearts -= 1
+          sAstroids[0].remove(astroid)   
+       else:
+          display.blit(astroid.img,(astroid.rect.x, astroid.rect.y))
+          astroid.rect.y += 50 * dt
+       remove = False  
+
+    for astroid in sAstroids[1]:
+       astroid.damage(bullets, 50)
+       remove, points = astroid.remove()
+       total_score += points
+       if remove:
+          sAstroids[1].remove(astroid)
+       elif astroid.rect.colliderect(p.rect):
+          hearts -= 1
+          sAstroids[1].remove(astroid)   
+       else:
+          display.blit(astroid.img,(astroid.rect.x, astroid.rect.y))
+          astroid.rect.y -= 50 * dt   
+       remove = False    
 
     for astroid in astroids:
        astroid.damage(bullets, 50)
-       remove = astroid.remove()
+       remove, points = astroid.remove()
+       total_score += points
        if remove:
           astroids.remove(astroid)
+       elif astroid.rect.colliderect(p.rect):
+          hearts -= 1
+          astroids.remove(astroid)   
        else:
-          pygame.draw.rect(display, white, astroid.rect)
+          i = random.randint(0,4)
+          display.blit(astroid.img, (astroid.rect.x, astroid.rect.y))
           astroid.rect.x -= 50 * dt   
-
-    timer_text = list(str(current_time - start_time))
-    timer_text.insert(-3, '.')
-    timer_text.append('s')   
-    my_big_font.render(display,timer_text,(10,10))
+       remove = False    
+     
+    for x in range(1, hearts + 1):
+        display.blit(heart_img, (W // 2 - (16 * x + 5 * x),10))  
 
     for bullet in bullets:
        if bullet.x >= W // 2:
           bullets.remove(bullet)
        else:
-         pygame.draw.rect(display, (255,0,0), bullet)
+         pygame.draw.rect(display, white, bullet)
          bullet.x += 250 * dt
+
+    if start == True and hearts == 0:
+       start = False  
+       astroids.clear()
+       sAstroids[0].clear()
+       sAstroids[1].clear()
+       enemies.clear()
+       vel = 0
 
     display.blit(ss_img, (p.rect.x, p.rect.y))  
 
