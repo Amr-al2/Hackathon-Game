@@ -429,6 +429,7 @@ while run:
            enemy.bullets.remove(bullet)
         elif bullet.colliderect(p.rect) and iframes == False: 
            hearts -= 1
+           enemy.bullets.remove(bullet)
            iframes = True
            iframes_cd = time.time()
         else:
@@ -538,7 +539,8 @@ while run:
 
     if wave > 10:
        wave = 10
-       end_text = "YOU WIN!"   
+       end_text = "YOU WIN!" 
+       hearts == 0  
 
     if start == True and hearts == 0:
        start = False 
