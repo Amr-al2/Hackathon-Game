@@ -13,14 +13,14 @@ class obstacle:
         self.rect = pygame.FRect(x, y, w, h)
 
     def damage(self, bullets, damage):
-      for bullet in bullets: 
+      for bullet in bullets[:]: 
        if self.rect.colliderect(bullet):
           self.hp -= damage 
           bullets.remove(bullet) 
            
     def remove(self):
-        if self.x <= 0:
+        if self.rect.x <= 0:
            return True, 0
-        elif self.hp == 0:
+        elif self.hp <= 0:
            return True, 10
         else: return False, 0
