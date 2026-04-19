@@ -1,3 +1,3 @@
 # Hackathon-Game
-Bullet Hell Runner
+Bullet Hell game,
 Made For the Entertainment Track
