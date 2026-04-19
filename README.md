@@ -1,3 +1,3 @@
 # Hackathon-Game
-Endless Bullet Hell Runner
+Bullet Hell Runner
 Made For the Entertainment Track

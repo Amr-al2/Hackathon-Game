@@ -429,6 +429,7 @@ while run:
            enemy.bullets.remove(bullet)
         elif bullet.colliderect(p.rect) and iframes == False: 
            hearts -= 1
+           enemy.bullets.remove(bullet)
            iframes = True
            iframes_cd = time.time()
         else:
